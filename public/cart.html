@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cart — ShopEasy</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="index.html" class="logo">🛒 ShopEasy</a>
+    <div class="nav-links">
+      <a href="index.html">Shop</a>
+      <a href="orders.html" id="ordersLink" style="display:none">My Orders</a>
+      <a href="admin.html" id="adminLink" style="display:none">⚙️ Admin</a>
+      <a href="cart.html" class="cart-icon active">🛒 Cart <span id="cartCount" class="cart-badge">0</span></a>
+      <span id="navUser"></span>
+      <a href="auth.html" id="loginBtn">Login</a>
+      <button onclick="logout()" id="logoutBtn" style="display:none">Logout</button>
+    </div>
+  </nav>
+
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <h1>Your Cart 🛒</h1>
+    <p>Review your items and place your order.</p>
+  </div>
+
+  <div class="container">
+    <div class="cart-grid">
+
+      <!-- CART ITEMS -->
+      <div class="cart-items-box">
+        <h2>Cart Items</h2>
+        <div id="cartItems">
+          <p class="no-posts">Your cart is empty. <a href="index.html">Shop now!</a></p>
+        </div>
+      </div>
+
+      <!-- ORDER SUMMARY + CHECKOUT -->
+      <div class="cart-summary-box">
+        <h2>Order Summary</h2>
+
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span id="subtotal">₹0</span>
+        </div>
+        <div class="summary-row">
+          <span>Delivery</span>
+          <span>₹49</span>
+        </div>
+        <div class="summary-row total-row">
+          <span>Total</span>
+          <span id="totalAmount">₹49</span>
+        </div>
+
+        <hr style="margin: 16px 0; border-color: #eee;" />
+
+        <h3 style="margin-bottom: 14px;">Delivery Address</h3>
+        <div id="checkoutMsg" class="msg"></div>
+
+        <label>Full Name</label>
+        <input type="text" id="addrName" placeholder="Enter your name" />
+
+        <label>Phone</label>
+        <input type="text" id="addrPhone" placeholder="Enter phone number" />
+
+        <label>Address</label>
+        <textarea id="addrText" rows="3" placeholder="Enter delivery address"></textarea>
+
+        <label>City</label>
+        <input type="text" id="addrCity" placeholder="Enter city" />
+
+        <label>Pincode</label>
+        <input type="text" id="addrPincode" placeholder="Enter pincode" />
+
+        <button class="btn full-btn" onclick="placeOrder()">✅ Place Order</button>
+        <a href="index.html" class="btn btn-outline full-btn" style="text-align:center; margin-top:10px;">
+          Continue Shopping
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2025 ShopEasy — Built for THIRANEX Internship Task 3</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    const role = localStorage.getItem('role');
+
+    // Update navbar
+    function updateNav() {
+      if (username && token) {
+        document.getElementById('navUser').textContent = '👤 ' + username;
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'inline';
+        document.getElementById('ordersLink').style.display = 'inline';
+        if (role === 'admin') document.getElementById('adminLink').style.display = 'inline';
+      }
+      updateCartBadge();
+    }
+
+    // Load cart from localStorage
+    function loadCart() {
+      const cart = getCart();
+      const cartItems = document.getElementById('cartItems');
+
+      if (cart.length === 0) {
+        cartItems.innerHTML = '<p class="no-posts">Your cart is empty. <a href="index.html">Shop now!</a></p>';
+        updateTotals(0);
+        return;
+      }
+
+      cartItems.innerHTML = cart.map(item => `
+        <div class="cart-item">
+          <div class="cart-item-emoji">${item.image}</div>
+          <div class="cart-item-info">
+            <h4>${item.name}</h4>
+            <p>₹${item.price} each</p>
+          </div>
+          <div class="cart-item-controls">
+            <button onclick="changeQty('${item.id}', -1)">−</button>
+            <span>${item.qty}</span>
+            <button onclick="changeQty('${item.id}', 1)">+</button>
+          </div>
+          <div class="cart-item-total">₹${item.price * item.qty}</div>
+          <button class="remove-btn" onclick="removeFromCart('${item.id}')">🗑️</button>
+        </div>
+      `).join('');
+
+      const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+      updateTotals(subtotal);
+    }
+
+    function updateTotals(subtotal) {
+      document.getElementById('subtotal').textContent = '₹' + subtotal;
+      document.getElementById('totalAmount').textContent = '₹' + (subtotal + (subtotal > 0 ? 49 : 0));
+    }
+
+    function changeQty(id, delta) {
+      const cart = getCart();
+      const index = cart.findIndex(i => i.id === id);
+      if (index === -1) return;
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) cart.splice(index, 1);
+      saveCart(cart);
+      loadCart();
+      updateCartBadge();
+    }
+
+    function removeFromCart(id) {
+      const cart = getCart().filter(i => i.id !== id);
+      saveCart(cart);
+      loadCart();
+      updateCartBadge();
+    }
+
+    // Place order
+    async function placeOrder() {
+      const msg = document.getElementById('checkoutMsg');
+
+      if (!token) {
+        msg.textContent = 'Please login to place an order.';
+        msg.className = 'msg error';
+        setTimeout(() => window.location.href = 'auth.html', 1500);
+        return;
+      }
+
+      const cart = getCart();
+      if (cart.length === 0) {
+        msg.textContent = 'Your cart is empty!';
+        msg.className = 'msg error';
+        return;
+      }
+
+      const name = document.getElementById('addrName').value.trim();
+      const phone = document.getElementById('addrPhone').value.trim();
+      const address = document.getElementById('addrText').value.trim();
+      const city = document.getElementById('addrCity').value.trim();
+      const pincode = document.getElementById('addrPincode').value.trim();
+
+      if (!name || !phone || !address || !city || !pincode) {
+        msg.textContent = 'Please fill in all delivery details.';
+        msg.className = 'msg error';
+        return;
+      }
+
+      const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+      const total = subtotal + 49;
+
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token
+        },
+        body: JSON.stringify({
+          items: cart,
+          total,
+          address: { name, phone, address, city, pincode }
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        saveCart([]);
+        updateCartBadge();
+        msg.textContent = '✅ Order placed successfully!';
+        msg.className = 'msg success';
+        setTimeout(() => window.location.href = 'orders.html', 1500);
+      } else {
+        msg.textContent = data.error || 'Something went wrong.';
+        msg.className = 'msg error';
+      }
+    }
+
+    updateNav();
+    loadCart();
+  </script>
+</body>
+</html>

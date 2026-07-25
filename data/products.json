@@ -1,0 +1,56 @@
+[
+  {
+    "id": "1",
+    "name": "Wireless Headphones",
+    "price": 1299,
+    "category": "Electronics",
+    "stock": 20,
+    "image": "🎧",
+    "description": "Premium wireless headphones with noise cancellation."
+  },
+  {
+    "id": "2",
+    "name": "Running Shoes",
+    "price": 899,
+    "category": "Footwear",
+    "stock": 15,
+    "image": "👟",
+    "description": "Lightweight running shoes for daily training."
+  },
+  {
+    "id": "3",
+    "name": "Backpack",
+    "price": 599,
+    "category": "Bags",
+    "stock": 30,
+    "image": "🎒",
+    "description": "Durable backpack with multiple compartments."
+  },
+  {
+    "id": "4",
+    "name": "Smart Watch",
+    "price": 2499,
+    "category": "Electronics",
+    "stock": 10,
+    "image": "⌚",
+    "description": "Feature-rich smartwatch with health tracking."
+  },
+  {
+    "id": "5",
+    "name": "Sunglasses",
+    "price": 399,
+    "category": "Accessories",
+    "stock": 25,
+    "image": "🕶️",
+    "description": "UV protection sunglasses with stylish frame."
+  },
+  {
+    "id": "6",
+    "name": "Water Bottle",
+    "price": 199,
+    "category": "Sports",
+    "stock": 50,
+    "image": "🍶",
+    "description": "Insulated water bottle keeps drinks cold for 24 hours."
+  }
+]

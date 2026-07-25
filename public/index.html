@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ShopEasy — Online Store</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="index.html" class="logo">🛒 ShopEasy</a>
+    <div class="nav-links">
+      <a href="index.html" class="active">Shop</a>
+      <a href="orders.html" id="ordersLink" style="display:none">My Orders</a>
+      <a href="admin.html" id="adminLink" style="display:none">⚙️ Admin</a>
+      <a href="cart.html" class="cart-icon">🛒 Cart <span id="cartCount" class="cart-badge">0</span></a>
+      <span id="navUser"></span>
+      <a href="auth.html" id="loginBtn">Login</a>
+      <button onclick="logout()" id="logoutBtn" style="display:none">Logout</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="shop-hero">
+    <h1>Welcome to ShopEasy 🛍️</h1>
+    <p>Discover amazing products at unbeatable prices.</p>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="container">
+    <div class="filter-bar">
+      <input type="text" id="searchInput" placeholder="🔍 Search products..." oninput="filterProducts()" />
+      <select id="categoryFilter" onchange="filterProducts()">
+        <option value="">All Categories</option>
+        <option value="Electronics">Electronics</option>
+        <option value="Footwear">Footwear</option>
+        <option value="Bags">Bags</option>
+        <option value="Accessories">Accessories</option>
+        <option value="Sports">Sports</option>
+      </select>
+    </div>
+
+    <!-- PRODUCTS GRID -->
+    <div id="productsGrid" class="products-grid">
+      <p>Loading products...</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2025 ShopEasy — Built for THIRANEX Internship Task 3</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    let allProducts = [];
+
+    // Update navbar
+    function updateNav() {
+      const user = localStorage.getItem('username');
+      const token = localStorage.getItem('token');
+      const role = localStorage.getItem('role');
+      if (user && token) {
+        document.getElementById('navUser').textContent = '👤 ' + user;
+        document.getElementById('loginBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'inline';
+        document.getElementById('ordersLink').style.display = 'inline';
+        if (role === 'admin') {
+          document.getElementById('adminLink').style.display = 'inline';
+        }
+      }
+      updateCartBadge();
+    }
+
+    // Load products
+    async function loadProducts() {
+      const res = await fetch('/api/products');
+      allProducts = await res.json();
+      renderProducts(allProducts);
+    }
+
+    // Render products
+    function renderProducts(products) {
+      const grid = document.getElementById('productsGrid');
+      if (products.length === 0) {
+        grid.innerHTML = '<p class="no-posts">No products found.</p>';
+        return;
+      }
+      grid.innerHTML = products.map(p => `
+        <div class="product-card">
+          <div class="product-emoji">${p.image}</div>
+          <div class="product-info">
+            <span class="product-category">${p.category}</span>
+            <h3>${p.name}</h3>
+            <p>${p.description}</p>
+            <div class="product-bottom">
+              <span class="product-price">₹${p.price}</span>
+              <span class="product-stock ${p.stock === 0 ? 'out' : ''}">
+                ${p.stock === 0 ? 'Out of Stock' : `Stock: ${p.stock}`}
+              </span>
+            </div>
+            <button class="btn full-btn" onclick="addToCart('${p.id}', '${p.name}', ${p.price}, '${p.image}')"
+              ${p.stock === 0 ? 'disabled' : ''}>
+              ${p.stock === 0 ? 'Out of Stock' : '🛒 Add to Cart'}
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Filter products
+    function filterProducts() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const category = document.getElementById('categoryFilter').value;
+      const filtered = allProducts.filter(p => {
+        const matchSearch = p.name.toLowerCase().includes(search) || p.description.toLowerCase().includes(search);
+        const matchCategory = category === '' || p.category === category;
+        return matchSearch && matchCategory;
+      });
+      renderProducts(filtered);
+    }
+
+    updateNav();
+    loadProducts();
+  </script>
+</body>
+</html>

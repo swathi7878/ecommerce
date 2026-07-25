@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel — ShopEasy</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="index.html" class="logo">🛒 ShopEasy</a>
+    <div class="nav-links">
+      <a href="index.html">Shop</a>
+      <a href="admin.html" class="active">⚙️ Admin</a>
+      <span id="navUser"></span>
+      <button onclick="logout()" id="logoutBtn">Logout</button>
+    </div>
+  </nav>
+
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <h1>⚙️ Admin Panel</h1>
+    <p>Manage products and orders from here.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- ADMIN TABS -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="showAdminTab('products')">📦 Products</button>
+      <button class="admin-tab" onclick="showAdminTab('orders')">📋 Orders</button>
+    </div>
+
+    <!-- PRODUCTS TAB -->
+    <div id="productsTab">
+
+      <!-- ADD PRODUCT FORM -->
+      <div class="admin-form-box">
+        <h2 id="formHeading">➕ Add New Product</h2>
+        <div id="productMsg" class="msg"></div>
+        <div class="admin-form-grid">
+          <div>
+            <label>Product Name</label>
+            <input type="text" id="pName" placeholder="e.g. Wireless Keyboard" />
+          </div>
+          <div>
+            <label>Price (₹)</label>
+            <input type="number" id="pPrice" placeholder="e.g. 999" />
+          </div>
+          <div>
+            <label>Category</label>
+            <select id="pCategory">
+              <option value="Electronics">Electronics</option>
+              <option value="Footwear">Footwear</option>
+              <option value="Bags">Bags</option>
+              <option value="Accessories">Accessories</option>
+              <option value="Sports">Sports</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Stock</label>
+            <input type="number" id="pStock" placeholder="e.g. 20" />
+          </div>
+          <div>
+            <label>Emoji Icon</label>
+            <input type="text" id="pImage" placeholder="e.g. 💻" />
+          </div>
+          <div>
+            <label>Description</label>
+            <input type="text" id="pDesc" placeholder="Short product description" />
+          </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+          <button class="btn" onclick="saveProduct()">💾 Save Product</button>
+          <button class="btn btn-outline" onclick="resetForm()">✖ Cancel</button>
+        </div>
+      </div>
+
+      <!-- PRODUCTS TABLE -->
+      <div class="admin-table-box">
+        <h2>All Products</h2>
+        <div id="productsTableWrap">
+          <p>Loading...</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ORDERS TAB -->
+    <div id="ordersTab" style="display:none">
+      <div class="admin-table-box">
+        <h2>All Orders</h2>
+        <div id="ordersTableWrap">
+          <p>Loading...</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <p>© 2025 ShopEasy — Built for THIRANEX Internship Task 3</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    const username = localStorage.getItem('username');
+
+    // Admin guard
+    if (!token || role !== 'admin') {
+      alert('Admin access only!');
+      window.location.href = 'auth.html';
+    }
+
+    document.getElementById('navUser').textContent = '👤 ' + username;
+
+    let editingId = null;
+
+    function showAdminTab(tab) {
+      document.getElementById('productsTab').style.display = tab === 'products' ? 'block' : 'none';
+      document.getElementById('ordersTab').style.display = tab === 'orders' ? 'block' : 'none';
+      document.querySelectorAll('.admin-tab').forEach((btn, i) => {
+        btn.classList.toggle('active', (tab === 'products' && i === 0) || (tab === 'orders' && i === 1));
+      });
+      if (tab === 'orders') loadOrders();
+    }
+
+    // ── PRODUCTS ──
+    async function loadProducts() {
+      const res = await fetch('/api/products');
+      const products = await res.json();
+      const wrap = document.getElementById('productsTableWrap');
+
+      if (products.length === 0) {
+        wrap.innerHTML = '<p class="no-posts">No products yet.</p>';
+        return;
+      }
+
+      wrap.innerHTML = `
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Icon</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${products.map(p => `
+              <tr>
+                <td>${p.image}</td>
+                <td>${p.name}</td>
+                <td>${p.category}</td>
+                <td>₹${p.price}</td>
+                <td>${p.stock}</td>
+                <td>
+                  <button class="btn btn-sm" onclick='editProduct(${JSON.stringify(p)})'>✏️ Edit</button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteProduct('${p.id}')">🗑️ Delete</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function editProduct(p) {
+      editingId = p.id;
+      document.getElementById('pName').value = p.name;
+      document.getElementById('pPrice').value = p.price;
+      document.getElementById('pCategory').value = p.category;
+      document.getElementById('pStock').value = p.stock;
+      document.getElementById('pImage').value = p.image;
+      document.getElementById('pDesc').value = p.description;
+      document.getElementById('formHeading').textContent = '✏️ Edit Product';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+      editingId = null;
+      document.getElementById('pName').value = '';
+      document.getElementById('pPrice').value = '';
+      document.getElementById('pStock').value = '';
+      document.getElementById('pImage').value = '';
+      document.getElementById('pDesc').value = '';
+      document.getElementById('formHeading').textContent = '➕ Add New Product';
+      document.getElementById('productMsg').className = 'msg';
+    }
+
+    async function saveProduct() {
+      const name = document.getElementById('pName').value.trim();
+      const price = document.getElementById('pPrice').value.trim();
+      const category = document.getElementById('pCategory').value;
+      const stock = document.getElementById('pStock').value.trim();
+      const image = document.getElementById('pImage').value.trim();
+      const description = document.getElementById('pDesc').value.trim();
+      const msg = document.getElementById('productMsg');
+
+      if (!name || !price || !category) {
+        msg.textContent = 'Name, price and category are required.';
+        msg.className = 'msg error';
+        return;
+      }
+
+      const url = editingId ? '/api/products/' + editingId : '/api/products';
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token
+        },
+        body: JSON.stringify({ name, price, category, stock, image, description })
+      });
+
+      if (res.ok) {
+        msg.textContent = editingId ? '✅ Product updated!' : '✅ Product added!';
+        msg.className = 'msg success';
+        resetForm();
+        loadProducts();
+      } else {
+        const data = await res.json();
+        msg.textContent = data.error || 'Something went wrong.';
+        msg.className = 'msg error';
+      }
+    }
+
+    async function deleteProduct(id) {
+      if (!confirm('Delete this product?')) return;
+      const res = await fetch('/api/products/' + id, {
+        method: 'DELETE',
+        headers: { 'Authorization': token }
+      });
+      if (res.ok) loadProducts();
+    }
+
+    // ── ORDERS ──
+    async function loadOrders() {
+      const res = await fetch('/api/orders', {
+        headers: { 'Authorization': token }
+      });
+      const orders = await res.json();
+      const wrap = document.getElementById('ordersTableWrap');
+
+      if (orders.length === 0) {
+        wrap.innerHTML = '<p class="no-posts">No orders yet.</p>';
+        return;
+      }
+
+      wrap.innerHTML = `
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Update</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${orders.map(o => `
+              <tr>
+                <td>#${o.id.slice(-5)}</td>
+                <td>${o.username}</td>
+                <td>${o.items.map(i => `${i.image} ${i.name} x${i.qty}`).join(', ')}</td>
+                <td>₹${o.total}</td>
+                <td><span class="status-badge ${o.status.toLowerCase()}">${o.status}</span></td>
+                <td>${new Date(o.createdAt).toLocaleDateString()}</td>
+                <td>
+                  <select onchange="updateStatus('${o.id}', this.value)" class="status-select">
+                    <option ${o.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                    <option ${o.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                    <option ${o.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                    <option ${o.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                  </select>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function updateStatus(id, status) {
+      await fetch('/api/orders/' + id, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token
+        },
+        body: JSON.stringify({ status })
+      });
+      loadOrders();
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>

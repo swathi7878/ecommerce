@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Orders — ShopEasy</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="index.html" class="logo">🛒 ShopEasy</a>
+    <div class="nav-links">
+      <a href="index.html">Shop</a>
+      <a href="orders.html" class="active">My Orders</a>
+      <a href="admin.html" id="adminLink" style="display:none">⚙️ Admin</a>
+      <a href="cart.html" class="cart-icon">🛒 Cart <span id="cartCount" class="cart-badge">0</span></a>
+      <span id="navUser"></span>
+      <button onclick="logout()" id="logoutBtn">Logout</button>
+    </div>
+  </nav>
+
+  <!-- PAGE HERO -->
+  <div class="page-hero">
+    <h1>My Orders 📦</h1>
+    <p>Track all your orders and their current status.</p>
+  </div>
+
+  <div class="container">
+    <div id="ordersList">
+      <p>Loading orders...</p>
+    </div>
+  </div>
+
+  <footer>
+    <p>© 2025 ShopEasy — Built for THIRANEX Internship Task 3</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    const role = localStorage.getItem('role');
+
+    // Guard: must be logged in
+    if (!token) {
+      alert('Please login to view orders.');
+      window.location.href = 'auth.html';
+    }
+
+    // Update navbar
+    function updateNav() {
+      if (username) {
+        document.getElementById('navUser').textContent = '👤 ' + username;
+        if (role === 'admin') document.getElementById('adminLink').style.display = 'inline';
+      }
+      updateCartBadge();
+    }
+
+    // Status color helper
+    function statusClass(status) {
+      switch (status) {
+        case 'Processing': return 'processing';
+        case 'Shipped': return 'shipped';
+        case 'Delivered': return 'delivered';
+        case 'Cancelled': return 'cancelled';
+        default: return '';
+      }
+    }
+
+    // Load user orders
+    async function loadOrders() {
+      const res = await fetch('/api/orders/my', {
+        headers: { 'Authorization': token }
+      });
+
+      if (!res.ok) {
+        document.getElementById('ordersList').innerHTML =
+          '<p class="no-posts">Failed to load orders.</p>';
+        return;
+      }
+
+      const orders = await res.json();
+      const list = document.getElementById('ordersList');
+
+      if (orders.length === 0) {
+        list.innerHTML = `
+          <div class="empty-orders">
+            <p>📭 You have no orders yet.</p>
+            <a href="index.html" class="btn" style="margin-top:16px;">Start Shopping</a>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = orders.map(o => `
+        <div class="order-card">
+
+          <!-- ORDER HEADER -->
+          <div class="order-header">
+            <div>
+              <h3>Order #${o.id.slice(-5)}</h3>
+              <p class="order-date">📅 ${new Date(o.createdAt).toLocaleDateString('en-IN', {
+                day: 'numeric', month: 'long', year: 'numeric'
+              })}</p>
+            </div>
+            <div>
+              <span class="status-badge ${statusClass(o.status)}">${o.status}</span>
+            </div>
+          </div>
+
+          <!-- ORDER ITEMS -->
+          <div class="order-items">
+            ${o.items.map(item => `
+              <div class="order-item">
+                <span class="order-item-emoji">${item.image}</span>
+                <div class="order-item-info">
+                  <strong>${item.name}</strong>
+                  <p>Qty: ${item.qty} × ₹${item.price}</p>
+                </div>
+                <div class="order-item-subtotal">₹${item.qty * item.price}</div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- ORDER FOOTER -->
+          <div class="order-footer">
+            <div class="order-address">
+              <p>📍 <strong>${o.address.name}</strong> | ${o.address.phone}</p>
+              <p>${o.address.address}, ${o.address.city} — ${o.address.pincode}</p>
+            </div>
+            <div class="order-total">
+              <p>Delivery: ₹49</p>
+              <h3>Total: ₹${o.total}</h3>
+            </div>
+          </div>
+
+          <!-- STATUS TRACKER -->
+          <div class="status-tracker">
+            <div class="tracker-step ${['Processing','Shipped','Delivered'].includes(o.status) ? 'done' : ''}">
+              <div class="tracker-dot"></div>
+              <p>Processing</p>
+            </div>
+            <div class="tracker-line ${['Shipped','Delivered'].includes(o.status) ? 'done' : ''}"></div>
+            <div class="tracker-step ${['Shipped','Delivered'].includes(o.status) ? 'done' : ''}">
+              <div class="tracker-dot"></div>
+              <p>Shipped</p>
+            </div>
+            <div class="tracker-line ${o.status === 'Delivered' ? 'done' : ''}"></div>
+            <div class="tracker-step ${o.status === 'Delivered' ? 'done' : ''}">
+              <div class="tracker-dot"></div>
+              <p>Delivered</p>
+            </div>
+          </div>
+
+        </div>
+      `).join('');
+    }
+
+    updateNav();
+    loadOrders();
+  </script>
+</body>
+</html>
